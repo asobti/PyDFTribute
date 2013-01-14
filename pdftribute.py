@@ -1,56 +1,84 @@
+# imports
 import tweetstream
 import os
 import pycurl
 
-stream = tweetstream.FilterStream("username", "password", None, None, ["#pdftribute"])
+class PyDFTribute :
+	def __init__(self, username, password, filters) :
+		# self.ext = Extractor()
+		self.filters = filters
+		self.username = username
+		self.password = password
 
-class Extractor:
-	def __init__(self) :
-		# does the full link contain a pdf?
-		self.full_link = False
+		self.has_full_link = False
+		self.full_link = None
 
-	def handle(self, buf) :
-		if buf.startswith('Location:') :
-			# print 'Expanding link'
+	def begin(self) :		
+		stream = tweetstream.FilterStream(self.username, self.password, None, None, self.filters)
+
+		for tweet in stream :			
+			if tweet.has_key('entities') :
+				entities = tweet['entities']
+
+				if entities.has_key('urls') :
+					urls = entities['urls']
+
+					self.handle_urls(urls)
+
+	def handle_urls(self, urls) :
+		for url in urls :
+			full_url = url['expanded_url']
+			
+			# reset state
+			self.has_full_link = False
+			self.full_link = None
+
+			try :
+				if full_url.endswith('.pdf') or full_url.endswith('.PDF') :
+					self.storeLink(full_url)
+				elif self.getFullLink(full_url) :
+					self.storeLink(self.full_link)
+				else :
+					print 'Skipping ' + full_url
+			except :
+				print 'Exception encountered'
+				continue
+
+	def getFullLink(self, url) :
+		conn = pycurl.Curl()
+		conn.setopt(pycurl.URL, str(url))
+		conn.setopt(pycurl.CUSTOMREQUEST, 'HEAD')
+		conn.setopt(pycurl.NOBODY, True)
+		conn.setopt(pycurl.HEADERFUNCTION, self.handle_headers)
+
+		try :
+			conn.perform()
+		finally :
+			conn.close()
+		return self.has_full_link
+	
+	def storeLink(self, url) :
+		# replace with code to insert into a storage layer
+		print 'Found PDF: ' + url
+		self.download_file(url)
+
+	def download_file(self, url) :
+		print 'Downloading ' + str(url)
+		os.system("wget -P downloads/ " + str(url))
+
+	def handle_headers(self, buf) :
+		if buf.startswith('Location:') :			
 			if ".pdf" in buf or ".PDF" in buf :
-				self.full_link = True
-				print 'Found pdf in expanded link ' + buf				
+				self.has_full_link = True
+				self.full_link = buf.replace("Location:", "").strip()
 
-def getFullLink(url) :
+twitter = {
+	'username' : 'username',
+	'password' : 'password',
+	'filters' : ['#pdftribute']
+}
 
-	ext = Extractor()
-
-	conn = pycurl.Curl()
-	conn.setopt(pycurl.URL, str(url))
-	conn.setopt(pycurl.CUSTOMREQUEST, 'HEAD')
-	conn.setopt(pycurl.NOBODY, True)
-	conn.setopt(pycurl.HEADERFUNCTION, ext.handle)
-
-	try :
-		conn.perform()		
-	finally :
-		conn.close()
-
-	return ext.full_link
-
-for tweet in stream :
-	if tweet.has_key('entities') :
-		entities = tweet['entities']
-
-		if entities.has_key('urls') :
-			urls = entities['urls']
-
-			for url in urls :
-				try :
-					# if either the link contains a pdf or it's expanded version does, download (wget will follow a 301 or 302 redirect)
-					if url['expanded_url'].endswith('.pdf') or url['expanded_url'].endswith('.PDF') or getFullLink(url['expanded_url']) :
-						print 'Downloading ' + url['expanded_url']
-						os.system("wget -P downloads/ " + url['expanded_url'])
-					else :
-						print 'Skipping ' + url['expanded_url']
-				except :
-					continue
-
-
-
-
+# entry point
+if __name__ == "__main__" :
+	pydf = PyDFTribute(twitter['username'], twitter['password'], twitter['filters'])
+	pydf.begin()
