@@ -18,10 +18,6 @@ class Extractor:
 
 def getFullLink(url) :
 
-	# www.pdftribute.net causes curl to fail. Temporary fix for now
-	if ("www.pdftribute.net" in str(url)) :
-		return False
-
 	ext = Extractor()
 
 	conn = pycurl.Curl()
@@ -45,12 +41,15 @@ for tweet in stream :
 			urls = entities['urls']
 
 			for url in urls :
-				# if either the link contains a pdf or it's expanded version does, download (wget will follow a 301 or 302 redirect)
-				if url['expanded_url'].endswith('.pdf') or url['expanded_url'].endswith('.PDF') or getFullLink(url['expanded_url']) :
-					print 'Downloading ' + url['expanded_url']
-					os.system("wget -P downloads/ " + url['expanded_url'])
-				else :
-					print 'Skipping ' + url['expanded_url']
+				try :
+					# if either the link contains a pdf or it's expanded version does, download (wget will follow a 301 or 302 redirect)
+					if url['expanded_url'].endswith('.pdf') or url['expanded_url'].endswith('.PDF') or getFullLink(url['expanded_url']) :
+						print 'Downloading ' + url['expanded_url']
+						os.system("wget -P downloads/ " + url['expanded_url'])
+					else :
+						print 'Skipping ' + url['expanded_url']
+				except :
+					continue
 
 
 
