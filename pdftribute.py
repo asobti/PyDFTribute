@@ -22,7 +22,9 @@ class Extractor:
 ext = Extractor()
 
 def getFullLink(url) :
-
+	ext.has_full_link = False
+	ext.full_link = None
+	
 	conn = pycurl.Curl()
 	conn.setopt(pycurl.URL, str(url))
 	conn.setopt(pycurl.CUSTOMREQUEST, 'HEAD')
