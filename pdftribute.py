@@ -37,9 +37,7 @@ class PyDFTribute :
 				if full_url.endswith('.pdf') or full_url.endswith('.PDF') :
 					self.storeLink(full_url)
 				elif self.getFullLink(full_url) :
-					self.storeLink(self.full_link)
-				else :
-					print 'Skipping ' + full_url
+					self.storeLink(self.full_link)				
 			except :
 				print 'Exception encountered'
 				continue
